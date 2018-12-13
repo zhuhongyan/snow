@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<style>
+    body{
+        background-image: url('双旦活动首页.png');
+        background-repeat: no-repeat;
+        background-size: contain;
+        width: 100%;
+        height: 2000px;
+    }
+</style>
+<body >
+</body>
+
+<script>
+    requestAnimationFrame = window.requestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        window.oRequestAnimationFrame ||
+        function(callback) { setTimeout(callback, 1000 / 60); };
+
+    cancelAnimationFrame = window.cancelAnimationFrame ||
+        window.mozCancelAnimationFrame ||
+        window.webkitCancelAnimationFrame ||
+        window.msCancelAnimationFrame ||
+        window.oCancelAnimationFrame;
+
+    function snowFall(bigSnow, smallSnow) {
+        /* 可配置属性 */
+        bigSnow = bigSnow || {};
+        smallSnow = smallSnow || {};
+        this.bigSnow = {};
+        this.smallSnow = {};
+        this.stopFalg = false;
+        this.bigSnow.maxFlake = bigSnow.maxFlake || 30;   /* 最多片数 */
+        this.bigSnow.flakeSize = bigSnow.flakeSize || 9;  /* 大雪花范围 */
+        this.bigSnow.flakeSizeSmall = bigSnow.flakeSizeSmall || 3;  /* 大雪花最小形状 */
+        this.bigSnow.fallSpeed = bigSnow.fallSpeed || 0.5;   /* 坠落速度 */
+        this.bigSnow.velXX = bigSnow.velX || 1; /* 横向速度 */
+        this.smallSnow.maxFlake = smallSnow.maxFlake || 140;   /* 最多片数 */
+        this.smallSnow.flakeSize = smallSnow.flakeSize || 3;  /* 雪花形状 */
+        this.smallSnow.fallSpeed = smallSnow.fallSpeed || 0.1;   /* 坠落速度 */
+        this.smallSnow.velXX = smallSnow.velX || 0.6; /* 横向速度 */
+        this.smallSnow.name = 'smallSnow'; /* 小雪花 */
+        this.maxFlake = this.bigSnow.maxFlake + this.smallSnow.maxFlake; // 总雪花数
+        /* 开始下雪 */
+        console.log(this);
+        this.start = function() {
+            this.stopFalg = false;
+            /* 创建画布 */
+            snowCanvas.apply(this);
+            /* 创建雪花形状 */
+            createFlakes.apply(this);
+            /* 画雪 */
+            drawSnow.apply(this);
+        };
+        this.stop = function() {
+            stopSnow.apply(this);
+        };
+    }
+    /* 创建画布 */
+    function snowCanvas() {
+        /* 添加Dom结点 */
+        const snowcanvas = document.createElement('canvas');
+        snowcanvas.id = 'snowfall';
+        snowcanvas.width = window.innerWidth;
+        snowcanvas.height = document.body.clientHeight;
+        snowcanvas.setAttribute('style', 'position:absolute; top: 0; left: 0; z-index: 1000; pointer-events: none;');
+        document.getElementsByTagName('body')[0].appendChild(snowcanvas);
+        this.canvas = snowcanvas;
+        this.ctx = snowcanvas.getContext('2d');
+        /* 窗口大小改变的处理 */
+        window.onresize = function() {
+            snowcanvas.width = window.innerWidth;
+        };
+    }
+    /* 雪运动对象 */
+    function flakeMove(canvasWidth, canvasHeight, snowList) {
+        this.x = Math.floor(Math.random() * canvasWidth);   /* x坐标 */
+        this.y = Math.floor(Math.random() * canvasHeight);  /* y坐标 */
+        if (snowList.name) {
+            this.size = Math.random() * snowList.flakeSize + 2;          /* 形状 */
+        } else {
+            this.size = Math.random() * snowList.flakeSize + snowList.flakeSizeSmall;          /* 形状 */
+        }
+        this.maxSize = snowList.flakeSize;                           /* 最大形状 */
+        this.flakeSizeSmall = snowList.flakeSizeSmall;               /* 大雪花最小形状 */
+        this.speed = Math.random() * 1 + snowList.fallSpeed;         /* 坠落速度 */
+        this.fallSpeed = snowList.fallSpeed;                         /* 坠落速度 */
+        this.velY = this.speed;                             /* Y方向速度 */
+        this.velX = snowList.velXX || 1;                         /* X方向速度 */
+        this.snowName = snowList.name;
+        this.stepSize = Math.random() / 30;                 /* 步长 */
+        this.step = 0;                                       /* 步数 */
+    }
+    flakeMove.prototype.update = function(canvas) {
+        const x = this.x,
+            y = this.y;
+        /* 左右摆动(余弦) */
+        // this.velX *= 0.98;
+        if (this.velY <= this.speed) {
+            this.velY = this.speed;
+        }
+        // this.velX += Math.cos(this.step += .05) * this.stepSize;
+        this.y += this.velY;
+        this.x += this.velX;
+        /* 飞出边界的处理 */
+        if (this.x >= canvas.width || this.x <= 0 || this.y >= canvas.height || this.y <= 0) {
+            this.reset(canvas.width, canvas.height);
+        }
+    };
+    /* 飞出边界-放置最顶端继续坠落 或最左侧*/
+    flakeMove.prototype.reset = function(width, height) {
+        // 从左侧飞出
+        if (Math.random() > 0.5) {
+            this.y = Math.floor(Math.random() * height);
+            this.x = 0;
+        } else {
+            this.x = Math.floor(Math.random() * width);
+            this.y = 0;
+        }
+        if (this.snowName) {
+            // 小雪花
+            this.size = Math.random() * this.maxSize + 2;
+        } else {
+            // 大雪花
+            this.size = Math.random() * this.maxSize + this.flakeSizeSmall;
+        }
+        this.speed = Math.random() * 1 + this.fallSpeed ;
+        this.velY = this.speed;
+        this.velX = this.velX || 1;
+    };
+    // 渲染雪花-随机形状（此处可修改雪花颜色！！！）
+    flakeMove.prototype.render = function(ctx) {
+        const snowFlake = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+        if (this.snowName) {
+            // 小雪花样式
+            snowFlake.addColorStop(0.1, 'rgba(120, 255, 255, 0.5)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.2, 'rgba(120, 255, 255, 0.5)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.3, 'rgba(120, 255, 255, 0.5)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.4, 'rgba(120, 255, 255, 0.5)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.5, 'rgba(120, 255, 255, 0.5)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.6, 'rgba(120, 255, 255, 0.5)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.7, 'rgba(120, 255, 255, 0.2)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.8, 'rgba(120, 255, 255, 0.15)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.9, 'rgba(120, 255, 255, 0.05)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(1, 'rgba(120, 255, 255, 0.05)');    /* 找16进制的RGB 颜色代码。 */
+        } else {
+            // 大雪花样式
+            snowFlake.addColorStop(0.1, 'rgba(255, 255, 255, 0.8)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.4, 'rgba(255, 255, 255, 0.8)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.6, 'rgba(255, 255, 255, 0.8)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.7, 'rgba(255, 255, 255, 0.7)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.8, 'rgba(255, 255, 255, 0.25)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(0.9, 'rgba(255, 255, 255, 0.15)'); /* 若要改为其他颜色，请自行查 */
+            snowFlake.addColorStop(1, 'rgba(255, 255, 255, 0.1)');    /* 找16进制的RGB 颜色代码。 */
+        }
+        ctx.save();
+        ctx.fillStyle = snowFlake;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    };
+    /* 创建雪花-定义形状 */
+    function createFlakes() {
+        console.log(this);
+        const bigSnowMaxFlake = this.bigSnow.maxFlake,
+            smallSnowMaxFlake = this.smallSnow.maxFlake,
+            // MaxFlake = this.maxFlake,
+            flakes = this.flakes = [],
+            canvas = this.canvas;
+        for (let i = 0; i < bigSnowMaxFlake; i++) {
+            flakes.push(new flakeMove(canvas.width, canvas.height, this.bigSnow))
+        }
+        for (let i = 0; i < smallSnowMaxFlake; i++) {
+            flakes.push(new flakeMove(canvas.width, canvas.height, this.smallSnow))
+        }
+    }
+    /* 画雪 */
+    function drawSnow() {
+        if (this.stopFalg) {
+            return;
+        }
+        const maxFlake = this.maxFlake,
+            flakes = this.flakes,
+            ctx = this.ctx,
+            canvas = this.canvas,
+            that = this;
+        /* 清空雪花 */
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let e = 0; e < maxFlake; e++) {
+            flakes[e].update(canvas);
+            flakes[e].render(ctx);
+        }
+        /*  一帧一帧的画 */
+        this.loop = requestAnimationFrame(function() {
+            drawSnow.apply(that);
+        });
+    }
+
+    function stopSnow() {
+        document.getElementsByTagName('body')[0].removeChild(document.getElementById('snowfall'));
+        this.stopFalg = true;
+    }
+    /* 调用及控制方法 */
+    // const snow = new snowFall();
+    // const snowDrow = { start: snow.start, stop: snow.stop };
+
+
+    const snowFa = new snowFall()
+
+    snowFa.start()
+</script>
+</html>
